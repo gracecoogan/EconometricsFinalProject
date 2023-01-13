@@ -1,0 +1,162 @@
+
+---
+main_topsize: 0.2 
+main_bottomsize: 0.1
+title: '**Socioeconomic Status as a Predictor of Health Outcomes**'
+poster_height: "100in"
+poster_width : "75in"
+body_textsize: "60px"
+author:
+  - name: '**Grace Coogan**'
+    affil: 1
+    main: true
+    email: gcoogan@umass.edu
+affiliation:
+  - num: 1
+    address: Department of Economics, University of Massachusetts Amherst
+main_findings:
+  - "Earnings is the only socioeconomic indicator that consitently harms health outcomes"
+output: 
+  posterdown::posterdown_betterport:
+    self_contained: false
+    pandoc_args: --mathjax
+    number_sections: false
+---
+
+
+
+```{r setup=False}
+knitr::opts_chunk$set(echo = TRUE,
+                      warning = FALSE,
+                      tidy = FALSE,
+                      message = FALSE,
+                      fig.align = 'center',
+                      out.width = "100%")
+options(knitr.table.format = "pdf") 
+library(posterdown)
+library(tidyverse)
+library(broom)
+library(ipumsr)
+ddi <- read_ipums_ddi("nhis_00008.xml")
+data <- read_ipums_micro(ddi)
+library(visreg)
+library(knitr)
+library(ggplot2)
+library(kableExtra)
+```
+
+# Introduction
+Many of us would hope and expect that in a time with such advanced medical technology, your health would not be completely dependent on your income. Unfortunately, however, there is a substantial body of research that suggests evidence of a health wealth gradient in which socioeconomic status is a major predictor of health outcomes. The existing data overwhelmingly suggests a positive correlation between socioeconomic status and a wide range of health outcomes, with individuals with high SES experiencing the best outcomes, and individuals with low SES experiencing the worst outcomes. But there are many factors that make up an individual’s’ SES, what factor of an individual’s SES is causing the most harm to their health status?
+
+Income, housing status, and education are commonly used measures of SES—they paint a clear picture of the type of life this person lives and the resources they have access to. Individuals with higher incomes are more likely to have health insurance and be able to afford out of pocket health expenses. They are also more likely to have autonomy over their job requirements and lead a less stressful life which is associated with better health outcomes (Brunner, 1997). A higher income also gains them access to healthier food and the opportunity to live in better neighborhoods (Banks et al, 2020). Owning a home provides more stable housing security than renting does, and owning a home is one of the most stable ways for a family to accumulate wealth and secure a higher standard of living for themselves (Wainer and Zabel, 2019). Higher education is associated with more access to higher paying jobs or jobs with better benefits such as healthcare (Paulsen and St. John, 2002). 
+
+Knowing that all three variables are intertwined with one another, it is necessary to determine which variables do the most harm to health outcomes so that we can determine what issue to target first and hopefully see improvements in health outcomes for individuals with lower socioeconomic status.
+
+# Data
+The data was downloaded from the IPUMS NHIS Health Surveys from the National Health Interview Series. All responses were recorded in 2018.
+
+Depression frequency measures how often a respondent reported feeling depressed. Responses ranged from daily (1) to never (5). 
+
+Heart condition yes or no response and identifies adults who have been diagnosed with any kind of heart condition other than coronary heart disease, angina pectoris, or a heart attack, by a medical professional. A "No" response was associated with a (1) and a "Yes" response with a (2). 
+
+Education reports the highest level of schooling that person has completed. The variable distinguishes between people who have completed some high school and did not obtain a diploma, those that graduated from high school and those that passed the GED. Education level is attached to a number value, and recorded from Never attended/kindergarten only (102) up to obtained Doctoral Degree (503). 
+
+Home Ownership reports home ownership status for all persons and indicates whether that persons home or apartment is owned or being bought (10), rented (20), or an other arrangement (30).
+
+Earnings reports an individuals total earnings during the previous calendar year of individuals that were aged 18 or older who worked for pay during the previous calendar year. Incomes are intervalled together with 0-4,999 dollars corresponding to 01 and 75,000 dollars and over corresponding to interval 11. 
+
+In order to avoid bias from non-compilers, I filtered out all values that corresponded to a not in universe, unknown, or refused to answer response. Since all of my independent variables were measured on drastically different scales, I scaled all of the independent variables for each regression to make them comparable to one another. I chose HeartCondition to represent a measure of physical health, and DepressionFrequency to represent a measure of mental health. 
+
+# Design 
+I ran two multivariate linear regression models to analyze the data. The first model uses the independent variables used are *Person's earnings in the previous calendar year* (Earnings), *Home ownership status* (HomeOwnership), and *Highest education obtained* (EducationLevel). The dependent variable used is a dummy variable, *ever told had heart condition* (HeartCondition). 
+
+The second linear multivariate regression  uses the same independent variables, but the independent variable used is *depression frequency* (Depression). 
+
+I chose heart condition and depression frequency as independent variables to measure two separate types of health conditions, one physical and one mental. My hypothesis is that earnings and education level will both have a significant negative effect on both health measures. I think that not owning a home would significantly harm both physical and mental health outcomes, so i hypothesize the the data would report a positive effect of the variable HomeOwnership on both physical and mental health outcomes. 
+
+$$
+Y_{HeartCondition}=\beta_1{Earnings}+\beta_2{HomeOwnership}+\beta_3{EducationLevel}+\epsilon_{i}
+$$
+$$
+Y_{DepressionLevel}=\beta_1{Earnings}+\beta_2{HomeOwnership}+\beta_3{EducationLevel}+\epsilon_{i}
+$$
+
+
+```{r}
+data1 <- filter(data, EARNINGS < 12, EARNINGS > 0, OWNERSHIP < 29, OWNERSHIP > 00, HEARTCONEV < 7, HEARTCONEV > 0, EDUC <  997, EDUC > 000, DEPFREQ > 0, DEPFREQ < 6)
+data1 <- data1 %>% mutate(HeartCondition = as.numeric(HEARTCONEV))
+data1 <- data1 %>% mutate(DepressionFrequency = as.numeric(DEPFREQ))
+data1 <- data1 %>% mutate(Earnings = as.numeric(EARNINGS))
+data1 <- data1 %>% mutate(HomeOwnership = as.numeric(OWNERSHIP))
+data1 <- data1 %>% mutate(EducationLevel = as.numeric(EDUC))
+```
+
+# Heart Condition
+
+```{r}
+reg1 <- lm(HeartCondition ~ scale(Earnings)+scale(HomeOwnership)+scale(EducationLevel), data1)
+knitr::kable(
+  tidy(reg1, conf.int = TRUE), format = "html") %>% kableExtra::kable_styling()
+```
+```{r}
+par(mfrow=c(1,3))
+visreg(reg1) 
+```
+
+
+```{r}
+summary(reg1)$r.squared
+```
+
+The model indicates that individuals with higher earnings are more commonly told they have a heart condition; a one unit increase in the scaled Earnings variable corresponds to a .007 decrease in the HeartCondition Variable, meaning individuals with higher earnings are told they have a heart condition less frequently than people with lower earnings, on average. The model also estimates that someone in the bottom income group (earning 0-4999) has an intercept of 1.06, which is close to 1, indicating individuals with low earnings are still not very commonly told that they have a heart condition. Earnings does have a significant effect on HeartCondition, as indicated by the extremely small p-value. This is confirmed by the fact that zero is not included in the confidence interval calculated at 95 percent confidence.
+
+A one unit increase in the scaled HomeOwnership variable corresponds to a .007 unit decrease in the HeartCondition Variable, indicating that renters are told that they have a hear condition less frequently than non-renters, on average. The intercept value is 1.06 also, indicating that homeowners are more commonly told they have a heart condition than renters, on average. But since the value is so close to 1, the model suggests that it is still not very common for home owners to be told they have a heart conditions either. This value is also statistically significant, as indicated by the small p-value. This is confirmed by the fact that zero is not included in the confidence interval calculated at 95 percent confidence.
+
+A one unit increase in the scales EducationLevel variable corresponds to a .002 unit increase in the HeartCondition variable, on average, meaning that individuals with more education were slightly more commonly told that they have a heart condition. EducationLevel has an intercept of 1.06 as well, indicating that even individuals in the bottom earnings group were not told they have a heart condition very frequently. This value is not statistically significant at an alpha level of .05, the p-value is greater than .05. This is confirmed by the fact that zero is included in the confidence interval calculated at 95 percent confidence.  Since the r-squared is .0014, it can be determined that the model does not fit the data very well, and that only 00.14% of the variation in heart conditions can be explained by earnings, home ownership, and education level. 
+
+# Depression
+
+```{r}
+reg3 <- lm(DepressionFrequency ~ scale(Earnings)+scale(HomeOwnership)+scale(EducationLevel), data1)
+knitr::kable(
+  tidy(reg3, conf.int = TRUE), format = "html") %>% kableExtra::kable_styling()
+```
+```{r}
+par(mfrow=c(1,3))
+visreg(reg3)
+```
+```{r}
+  summary(reg3)$r.squared
+```
+
+Earnings has a strong positive effect on depression frequency, individuals with higher earnings reported feeling depressed less frequently than lower earners. For a one unit increase in the Earnings variable, there was a .13 unit increase in DepressionFrequency, on average, with higher earners almost never feeling depressed. The y-intercept is 4.20, meaning individuals in the bottom earnings group reported feeling depressed slightly less than a few times a year. This is a significant effect, as indicated by the extremely small p-value, and confirmed by the 95 percent confidence interval that does not include 0.
+
+Home owners reported feeling depressed less frequently than renters. For a one unit increase in the HomeOwnership variable, there was a .08 unit decrease in DepressionFrequency, indicating that home owners or non-renters report feeling depressed less frequently than renters. The y-intercept for HomeOwnership is at 4.21, indicating that non-renters report feeling depressed a bit less than a few times a year, on average. This is a significant effect, as indicated by the extremely small p-value, and confirmed by the 95 percent confidence interval that does not include 0.
+
+A one unit increase in EducationLevel corresponds to a .04 unit decrease in the HeartCondition variable, indicating that individuals with higher education experience feelings of depression more frequently than individuals with less education. The y-intercept is at 4.29, meaning that individuals with no education or having only gone to kindergarten report feeling depressed less than a few times a year, but more than never. This is a significant effect, as indicated by the extremely small p-value, and confirmed by the 95 percent confidence interval that does not include 0. The linear model for depression is also not a great fit for the data. R-squared is .027, meaning only 2.7 percent of the variation in depression frequency can be explained by earnings, home ownership, and education level.
+
+# Discussion 
+
+While my findings were not what I had initially predicted, I believe I still had some interesting findings that could help direct future research designs that could improve upon my models. I believe that data was a bit limited, since all earnings over 75,000 a year were grouped as one interval it skewed the data to the right. Earnings in the United States go well above 75,000, so including those in the data would provide a more accurate picture of how much earnings effects health outcomes. 
+
+That being said, I think there are still some interesting findings with the data that was available. My findings indicate that earnings have a positive impact on physical health and on mental health outcomes. Individuals with higher earnings likely are able to take better care of themselves physically and emotionally—they probably eat better food, get more exercise, spend more time with their family, and are less stressed on average than lower income workers all of which would make them less likely to be told that they have a heart condition or feel depressed. Individuals with lower earnings do not have access to many of the same resources as individuals with higher earnings because they simply cannot afford them and often go without many basic needs which harms their health outcomes. These findings would have likely been even more pronounced if we had data for higher earnings brackets beyond 75000 per year. 
+
+Findings of the effect the HomeOwnership variable indicate that owning a home has a negative effect on physical health outcomes and a positive impact on mental health outcomes, or in other words, that homeowners are better off mentally while renters are better off physically. Perhaps physical health is better off for renters because they are able to rent in better neighborhoods for less money if they were to purchase a home and can spend more of their income on other things that positively impact their physical health, while home owners could be worse off physically as a result because perhaps some individuals could only afford purchase a home in an area does not support a healthy lifestyle and they could have done better had they rented an apartment for less money. Mental health of home owners  could be better because they do not have to be as concerned about being evicted or exploited by a frustrating landlord while renters are more likely to have to deal with those things and move around more often, which can be stressful and take a toll on mental health. 
+
+Education level did not have a significant effect on physical health. The finding that the data reported was a bit difficult to make sense of anyway. As education level increased I would have expected physical health outcomes to be better on average. Perhaps something that could be causing this could be that individuals with more education sit down more during work and work more desk jobs than people with less education. Individuals with more education are more likely to stay up to date with current events and be aware of major injustices in society, which could explain why individuals with more education reported feeling depressed more frequently than those with less education. 
+
+So, only one variable emerges from the data as consistently problematic for health outcomes-Earnings. This makes sense and is what I expected. Higher earnings can buy access to anything, including a home in a good neighborhood and a college education. If earnings go up, everything gets better, including health outcomes. This finding, while bleak, can provide meaningful guidance to legislators. If earnings is the one measure to focus on to see improvement, then they can pass more targeted policy that will have a positive effect for a large proportion of the earnings distribution. The hard part is getting them to agree to do such a thing. 
+
+# References
+
+Banks, Justin, Marian L. Fitzgibbon, Linda A. Schiffer, Richard T. Campbell, Mirjana A. Antonic, Carol L. Braunschweig, Angela M. Odoms-Young, and Angela Kong. 2020. “Relationship Between Grocery Shopping Frequency and Home- and Individual-Level Diet Quality Among Low-Income Racial or Ethnic Minority Households With Preschool-Aged Children.” Journal of the Academy of Nutrition and Dietetics 120, no. 10: 1706-1714.e1. https://doi.org/10.1016/j.jand.2020.06.017.
+
+Brunner, Eric. 1997. “Socioeconomic Determinants of Health: Stress and the Biology of Inequality.” BMJ 314, no. 7092: 1472–1472. https://doi.org/10.1136/bmj.314.7092.1472.
+
+Lynn A. Blewett, Julia A. Rivera Drew, Miriam L. King and Kari C.W. Williams. IPUMS Health Surveys: National Health Interview Survey, Version 6.4 [dataset]. Minneapolis, MN: IPUMS, 2019.
+https://doi.org/10.18128/D070.V6.4
+
+Paulsen, Michael B., and Edward P. St. John. 2002. “Social Class and College Costs: Examining the Financial Nexus between College Choice and Persistence.” The Journal of Higher Education 73, no. 2: 189–236.
+
+Wainer, Allison, and Jeffrey Zabel. 2020. “Homeownership and Wealth Accumulation for Low-Income Households.” Life Cycle Consumption, Housing, and Homeownership 47, (March): https://doi.org/10.1016/j.jhe.2019.03.002.
+
